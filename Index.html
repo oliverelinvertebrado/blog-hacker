@@ -83,6 +83,12 @@
             background-color: #000;
             padding: 5px;
             position: relative;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+        .image-container:hover {
+            transform: scale(1.02);
+            box-shadow: 0 0 10px #0ff;
         }
         .image-box {
             width: 100%;
@@ -90,6 +96,89 @@
             object-fit: cover;
             border-bottom: 1px dashed #0f0;
         }
+        
+        /* Modal estilo WhatsApp */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease-out;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-content {
+            background-color: #000;
+            border: 1px solid #0ff;
+            width: 90%;
+            max-width: 800px;
+            max-height: 90vh;
+            overflow: hidden;
+            position: relative;
+            transform: scale(0.8);
+            transition: transform 0.3s ease-out;
+        }
+        .modal-overlay.active .modal-content {
+            transform: scale(1);
+        }
+        .modal-header {
+            padding: 10px;
+            border-bottom: 1px solid #0ff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-title {
+            color: #0ff;
+            font-size: 16px;
+        }
+        .modal-close {
+            color: #f00;
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+        }
+        .modal-body {
+            display: flex;
+            height: 70vh;
+        }
+        .modal-image {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            padding: 10px;
+        }
+        .modal-thumbnails {
+            width: 100px;
+            border-left: 1px solid #0ff;
+            overflow-y: auto;
+            background: #111;
+        }
+        .thumbnail {
+            width: 100%;
+            height: 80px;
+            object-fit: cover;
+            border-bottom: 1px solid #0f0;
+            cursor: pointer;
+            opacity: 0.7;
+            transition: opacity 0.3s;
+        }
+        .thumbnail:hover, .thumbnail.active {
+            opacity: 1;
+            border: 1px solid #0ff;
+        }
+        
         .audio-player {
             width: 100%;
             margin-top: 5px;
@@ -230,6 +319,20 @@
         <p>> Teléfono: <a href="tel:+524581078879" style="color: #f0f;">+52 458 107 8879</a></p>
     </section>
 
+    <!-- Modal para imágenes -->
+    <div class="modal-overlay" id="imageModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title" id="modalTitle">RATA_1.JPG</div>
+                <button class="modal-close" id="modalClose">&times;</button>
+            </div>
+            <div class="modal-body">
+                <img src="" class="modal-image" id="modalMainImage">
+                <div class="modal-thumbnails" id="modalThumbnails"></div>
+            </div>
+        </div>
+    </div>
+
     <footer>
         <p>// SYSTEM STATUS: ONLINE | LAST UPDATE: <span id="fecha"></span> | © OLIVER_INV3RT3BR4D0</p>
     </footer>
@@ -241,7 +344,7 @@
         // Configuración inicial
         document.getElementById('fecha').textContent = new Date().toLocaleDateString('es-MX');
         
-        // Mapeo de tipos a carpetas de imágenes (¡CORREGIDO!)
+        // Mapeo de tipos a carpetas de imágenes
         const imageFolders = {
             'deudor': 'deudores',
             'rata': 'ratas',
@@ -249,12 +352,14 @@
             'ayuda': 'ayudas'
         };
 
-        // Generador de elementos de audio (VERSIÓN CORREGIDA)
+        // Generador de elementos de audio
         function createAudioPlayer(type, index) {
             const folder = imageFolders[type];
+            const mainImage = `img/${folder}/${type}${index}/${type}${index}.1.jpg`;
+            
             return `
-            <div class="image-container">
-                <img src="img/${folder}/${type}${index}.jpg" class="image-box" 
+            <div class="image-container" data-type="${type}" data-index="${index}">
+                <img src="${mainImage}" class="image-box" 
                      onerror="this.src='https://via.placeholder.com/200?text=${type.toUpperCase()}_${index}'">
                 <div class="audio-player">
                     <div class="audio-controls">
@@ -288,6 +393,73 @@
                 }
                 document.getElementById(section.id).innerHTML = html;
             });
+        }
+
+        // Función para abrir el modal con las imágenes
+        function openImageModal(type, index) {
+            const modal = document.getElementById('imageModal');
+            const mainImage = document.getElementById('modalMainImage');
+            const thumbnailsContainer = document.getElementById('modalThumbnails');
+            const title = document.getElementById('modalTitle');
+            
+            // Configurar título
+            title.textContent = `${type.toUpperCase()}_${index}`;
+            
+            // Limpiar thumbnails anteriores
+            thumbnailsContainer.innerHTML = '';
+            
+            // Cargar imágenes (hasta 4)
+            let imagesFound = 0;
+            for (let i = 1; i <= 4; i++) {
+                const imgPath = `img/${imageFolders[type]}/${type}${index}/${type}${index}.${i}.jpg`;
+                const img = new Image();
+                img.src = imgPath;
+                
+                img.onload = function() {
+                    imagesFound++;
+                    
+                    // Crear thumbnail
+                    const thumbnail = document.createElement('img');
+                    thumbnail.src = imgPath;
+                    thumbnail.className = 'thumbnail';
+                    if (i === 1) thumbnail.classList.add('active');
+                    
+                    thumbnail.addEventListener('click', function() {
+                        // Actualizar imagen principal
+                        mainImage.src = imgPath;
+                        
+                        // Marcar thumbnail activo
+                        document.querySelectorAll('.thumbnail').forEach(t => t.classList.remove('active'));
+                        this.classList.add('active');
+                    });
+                    
+                    thumbnailsContainer.appendChild(thumbnail);
+                    
+                    // Establecer primera imagen como principal
+                    if (i === 1) {
+                        mainImage.src = imgPath;
+                    }
+                };
+                
+                img.onerror = function() {
+                    // Si no hay más imágenes, salir del bucle
+                    if (i === 1) {
+                        // Si no hay ninguna imagen, mostrar placeholder
+                        mainImage.src = `https://via.placeholder.com/800x600?text=${type.toUpperCase()}_${index}`;
+                    }
+                };
+            }
+            
+            // Mostrar modal con animación
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        // Función para cerrar el modal
+        function closeImageModal() {
+            const modal = document.getElementById('imageModal');
+            modal.classList.remove('active');
+            document.body.style.overflow = 'auto';
         }
 
         // Función mejorada de reproducción
@@ -358,9 +530,19 @@
             populateSections();
             generateWaveforms();
             
-            // Configurar eventos
+            // Configurar eventos de clic en imágenes
+            document.querySelectorAll('.image-container').forEach(container => {
+                container.addEventListener('click', function() {
+                    const type = this.getAttribute('data-type');
+                    const index = this.getAttribute('data-index');
+                    openImageModal(type, index);
+                });
+            });
+            
+            // Configurar eventos de audio
             document.querySelectorAll('.play-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
+                btn.addEventListener('click', function(e) {
+                    e.stopPropagation(); // Evitar que se abra el modal al tocar el botón de play
                     togglePlay(this);
                 });
             });
@@ -369,6 +551,23 @@
                 audio.addEventListener('timeupdate', function() {
                     updateProgress(this);
                 });
+            });
+            
+            // Configurar botón de cerrar modal
+            document.getElementById('modalClose').addEventListener('click', closeImageModal);
+            
+            // Cerrar modal al hacer clic fuera del contenido
+            document.getElementById('imageModal').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeImageModal();
+                }
+            });
+            
+            // Cerrar modal con tecla ESC
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    closeImageModal();
+                }
             });
         });
 
